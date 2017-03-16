@@ -1,0 +1,478 @@
+/*
+ * build.gradle : EPControl module build script
+ *
+ * This file is part of EPControl.
+ *
+ * Copyright (C) 2016  Jean-Baptiste Galet & Timothe Aeberhardt
+ *
+ * EPControl is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * EPControl is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with EPControl.  If not, see <http://www.gnu.org/licenses/>.
+ */
+import org.gradle.internal.os.OperatingSystem;
+
+apply plugin: 'com.android.model.application'
+
+final APP_ABIS = ["armeabi-v7a"]
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+model {
+    android {
+        compileSdkVersion = 25
+        buildToolsVersion = "25.0.0"
+
+        defaultConfig {
+            applicationId = "io.pokesec.epcontrol"
+            minSdkVersion.apiLevel = 19
+            targetSdkVersion.apiLevel = compileSdkVersion.asType(Integer)
+            versionCode = 3
+            versionName = "0.0.1-alpha"
+            multiDexEnabled true
+        }
+
+        ndk {
+            toolchain = "gcc"
+            toolchainVersion = "5"
+            moduleName = "python-wrapper"
+            cppFlags.add("-I" + getPythonIncDir())
+            cppFlags.add("-fexceptions")
+            ldLibs.add("python3.5m")
+            ldLibs.add("log")
+            stl "gnustl_shared"
+        }
+
+        buildTypes {
+            release {
+                minifyEnabled = false
+                signingConfig = $("android.signingConfigs.release")
+                proguardFiles.add(file('proguard-rules.pro'))
+                resValues.with {
+                    create() {
+                        type = "string"
+                        name = "google_app_id"
+                        value = "1:134306964162:android:cdd71e654a925856"
+                    }
+                }
+            }
+            debug {
+                applicationIdSuffix '.debug'
+                versionNameSuffix '-debug'
+                resValues.with {
+                    create() {
+                        type = "string"
+                        name = "google_app_id"
+                        value = "1:134306964162:android:940036914ad27e48"
+                    }
+                }
+            }
+        }
+
+        productFlavors {
+            APP_ABIS.each { abi ->
+                create(getFlavorName(abi)) {
+                    ndk {
+                        abiFilters.add(abi)
+                        getPrebuiltLibPaths(abi).each { path ->
+                            ldFlags.add("-L" + path)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    android.lintOptions {
+        abortOnError false
+    }
+
+    android.signingConfigs {
+        create("release") {
+            storeFile project.rootProject.file("pokesec.jks")
+            storePassword properties.getProperty('storePassword')
+            keyAlias "prod"
+            keyPassword properties.getProperty('keyPassword')
+            storeType "jks"
+        }
+    }
+}
+
+tasks.all {
+    task ->
+        if (task.name.startsWith('link')) {
+            task.dependsOn copyNativeLibs, stripNativeLibs
+        }
+        if (task.name.startsWith('package')) {
+            task.dependsOn zipPythonAssets
+        }
+        if (task.name.startsWith('ndkBuild')) {
+            zipPythonAssets.dependsOn(task)
+        }
+}
+
+task copyNativeLibs {
+    ["debug", "release"].each { buildType ->
+        APP_ABIS.each { abi ->
+            dependsOn tasks.create(name: "copy-native-library-crystax-${abi}-${buildType}", type: Copy) {
+                from getLibCrystax(abi)
+                from "${getOpenSSLLibDir(abi)}/libcrypto.so"
+                into getTargetLibDir(abi, buildType)
+            }
+            dependsOn tasks.create(name: "copy-native-python-${abi}-${buildType}", type: Copy) {
+                from getPythonLibDir(abi)
+                into getTargetLibDir(abi, buildType)
+            }
+        }
+    }
+}
+
+task buildPythonAssets {
+    def gitlab_url = properties.getProperty('gitlab_url', System.getenv("GITLAB_URL"))
+    def api_token = properties.getProperty('api_token', System.getenv("API_TOKEN"))
+    def agentlib_id = properties.getProperty('agentlib_id', System.getenv("AGENTLIB_ID"))
+
+    ["debug", "release"].each { buildType ->
+        APP_ABIS.each { abi ->
+            dependsOn tasks.create(name: "install-native-modules-${abi}-${buildType}", type: Exec) {
+                commandLine "python3",
+                        "build-python-deps.py",
+                        "${buildDir}/${abi}-${buildType}-venv"
+                environment PATH: getCrystaxNdkDir() + ":" + getCrystaxBinPath(abi) + ":" + System.getenv("PATH")
+                environment CC: getCC(abi)
+                environment CXX: getCXX(abi)
+                environment CFLAGS: getCFLAGS(abi)
+                environment CXXFLAGS: getCFLAGS(abi)
+                environment LDFLAGS: getLDFLAGS(abi, buildType)
+                environment LDSHARED: getLDSHARED(abi, buildType)
+                environment NDKPLATFORM: 1
+                environment LIBLINK: 1
+                environment ARCH: abi
+                environment API_TOKEN: api_token
+                environment AGENTLIB_ID: agentlib_id
+                environment GITLAB_URL: gitlab_url
+                workingDir "python-deps"
+            }
+        }
+    }
+}
+
+task preparePythonAssets(dependsOn: buildPythonAssets) {
+    ["debug", "release"].each { buildType ->
+        APP_ABIS.each { abi ->
+            dependsOn tasks.create(name: "prepare-python-assets-${abi}-${buildType}", type: Exec) {
+                commandLine "python3",
+                        "python-deps/prepare-python-assets.py",
+                        "${buildDir}/${abi}-${buildType}-venv/lib/python3.5/site-packages",
+                        "${getPythonLibDir(abi)}",
+                        "${buildDir}/${abi}-${buildType}-prepared"
+            }
+        }
+    }
+}
+
+task zipPythonAssets(dependsOn: preparePythonAssets) {
+    ["debug", "release"].each { buildType ->
+        APP_ABIS.each { abi ->
+            dependsOn tasks.create(name: "copy-python-assets-${abi}-${buildType}", type: Zip, dependsOn: preparePythonAssets) {
+                archiveName "assets-${getFlavorName(abi)}-${buildType}.zip"
+                destinationDir file(getOutputAssetsDir(abi, buildType))
+                from "${buildDir}/${abi}-${buildType}-prepared"
+                rename '(.*).cpython-(.*).so', '$1.so'
+            }
+        }
+    }
+}
+
+task stripNativeLibs(dependsOn: copyNativeLibs) {
+    ["debug", "release"].each { buildType ->
+        APP_ABIS.each { abi ->
+            def libs = []
+            libs += "crystax"
+
+            libs.each { name ->
+                dependsOn tasks.create(name: "strip-native-library-${name}-${abi}-${buildType}", type: Exec) {
+                    commandLine getStripExecutable(abi), "--strip-unneeded", "${getTargetLibDir(abi, buildType)}/lib${name}.so"
+                }
+            }
+
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile 'com.android.support:multidex:1.0.1'
+    compile 'com.firebase:firebase-jobdispatcher:0.5.0'
+    compile 'com.google.firebase:firebase-core:10.0.1'
+    compile 'com.google.firebase:firebase-messaging:10.0.1'
+    compile 'com.android.support:appcompat-v7:25.0.0'
+    compile 'com.android.support:design:25.0.0'
+    compile 'com.android.support:support-v4:25.0.0'
+    compile 'com.journeyapps:zxing-android-embedded:3.4.0'
+    compile 'com.google.guava:guava:20.0'
+    testCompile 'junit:junit:4.12'
+}
+
+def getNdkDir() {
+    if (System.env.ANDROID_NDK_ROOT != null)
+        return System.env.ANDROID_NDK_ROOT
+
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    def ndkdir = properties.getProperty('ndk.dir', null)
+    if (ndkdir == null)
+        throw new GradleException("""\
+                NDK location not found.
+                Define location with ndk.dir in the local.properties file
+                or with an ANDROID_NDK_ROOT environment variable.""")
+
+    return ndkdir
+}
+
+def getCrystaxNdkDir() {
+    def ndkDir = getNdkDir()
+    if (!(new File(ndkDir, "sources/crystax").exists()))
+        throw new GradleException("""\
+            '${ndkDir}' is not a CrystaX NDK.
+            Edit ndk.dir in local.properties or set ANDROID_NDK_ROOT
+            environment variable pointing to CrystaX NDK""")
+
+    return ndkDir
+}
+
+def getFlavorName(abi) {
+    switch (abi) {
+        case "armeabi":
+            return "arm";
+        case "armeabi-v7a":
+            return "arm7"
+        case "arm64-v8a":
+            return "arm64"
+        default:
+            return abi.replaceAll('-', '_')
+    }
+}
+
+def getToolchainName(abi) {
+    switch (abi) {
+        case ~/^armeabi.*/:
+            return "arm-linux-androideabi"
+        case ~/^arm64.*/:
+            return "aarch64-linux-android"
+        case "mips":
+            return "mipsel-linux-android"
+        case "mips64":
+            return "mips64el-linux-android"
+        case ["x86", "x86_64"]:
+            return abi
+        default:
+            throw new GradleException("Unsupported ABI: '${abi}'")
+    }
+}
+
+def getToolchainPrefix(abi) {
+    switch (abi) {
+        case ~/^armeabi.*/:
+            return "arm-linux-androideabi"
+        case ~/^arm64.*/:
+            return "aarch64-linux-android"
+        case "mips":
+            return "mipsel-linux-android"
+        case "mips64":
+            return "mips64el-linux-android"
+        case "x86":
+            return "i686-linux-android"
+        case "x86_64":
+            return "x86_64-linux-android"
+        default:
+            throw new GradleException("Unsupported ABI: '${abi}'")
+    }
+}
+
+def getPlatformName(abi) {
+    switch (abi) {
+        case "armeabi":
+            return "arm";
+        case "armeabi-v7a":
+            return "arm"
+        case "arm64-v8a":
+            return "arm64"
+        default:
+            return abi.replaceAll('-', '_')
+    }
+}
+
+def getMArch(abi) {
+    switch (abi) {
+        case "armeabi":
+            return "armv7";
+        case "armeabi-v7a":
+            return "armv7-a"
+        case "arm64-v8a":
+            return "arm64"
+        default:
+            return abi.replaceAll('-', '_')
+    }
+}
+
+def getHostOS() {
+    if (OperatingSystem.current().isLinux())
+        return "linux"
+    if (OperatingSystem.current().isMacOsX())
+        return "darwin"
+    if (OperatingSystem.current().isWindows())
+        return "windows"
+    throw new GradleException("Unsupported host OS")
+}
+
+def getHostArch() {
+    def arch = System.getProperty("os.arch")
+    switch (arch) {
+        case ["x86_64", "amd64"]:
+            return "x86_64"
+        case ~/^i[3456]86/:
+        case "x86":
+            return "x86"
+        default:
+            throw new GradleException("Can't detect host's CPU architecture: '${arch}'")
+    }
+}
+
+def getHostTag() {
+    def tag = getHostOS()
+    def arch = getHostArch()
+    if (tag != "windows" || arch != "x86")
+        tag += "-${arch}"
+    return tag
+}
+
+def getStripExecutable(abi) {
+    def ndk = getCrystaxNdkDir()
+    def toolchainName = getToolchainName(abi)
+    def toolchainPrefix = getToolchainPrefix(abi)
+    def hostTag = getHostTag()
+    def strip = "${ndk}/toolchains/${toolchainName}-5/prebuilt/${hostTag}/bin/${toolchainPrefix}-strip"
+    if (OperatingSystem.current().isWindows())
+        strip = strip.replaceAll('/', '\\\\') + '.exe'
+    return strip
+}
+
+def getCrystaxBinPath(abi) {
+    def ndk = getCrystaxNdkDir()
+    def toolchainName = getToolchainName(abi)
+    def hostTag = getHostTag()
+    def path = "${ndk}/toolchains/${toolchainName}-5/prebuilt/${hostTag}/bin"
+    return path
+}
+
+def getCC(abi) {
+    def api_level = 21
+    def ndk = getCrystaxNdkDir()
+    def toolchainName = getToolchainName(abi)
+    def toolchainPrefix = getToolchainPrefix(abi)
+    def hostTag = getHostTag()
+    def cc = "${ndk}/toolchains/${toolchainName}-5/prebuilt/${hostTag}/bin/${toolchainPrefix}-gcc " +
+            "--sysroot=${getCrystaxNdkDir()}/platforms/android-${api_level}/arch-${getPlatformName(abi)}"
+    if (OperatingSystem.current().isWindows())
+        cc = cc.replaceAll('/', '\\\\') + '.exe'
+    return cc
+}
+
+def getCXX(abi) {
+    def api_level = 21
+    def ndk = getCrystaxNdkDir()
+    def toolchainName = getToolchainName(abi)
+    def toolchainPrefix = getToolchainPrefix(abi)
+    def hostTag = getHostTag()
+    def cxx = "${ndk}/toolchains/${toolchainName}-5/prebuilt/${hostTag}/bin/${toolchainPrefix}-g++ " +
+            "--sysroot=${getCrystaxNdkDir()}/platforms/android-${api_level}/arch-${getPlatformName(abi)}"
+    if (OperatingSystem.current().isWindows())
+        cxx = cxx.replaceAll('/', '\\\\') + '.exe'
+    return cxx
+}
+
+def getCFLAGS(abi) {
+    def api_level = 21
+    def cflags = "-DANDROID -mandroid -fomit-frame-pointer " +
+            "--sysroot ${getCrystaxNdkDir()}/platforms/android-${api_level}/arch-${getPlatformName(abi)} " +
+            "-I${getPythonIncDir()}/python -I${getOpenSSLIncDir()} -march=${getMArch(abi)} -mfloat-abi=softfp -mfpu=vfp -mthumb"
+    if (OperatingSystem.current().isWindows())
+        cflags = cflags.replaceAll('/', '\\\\') + '.exe'
+    return cflags
+}
+
+def getLDFLAGS(abi, buildType) {
+    def ldflags = "-lm -lcrystax -L${getPythonLibDir(abi)} -L${getLibCrystaxDir(abi)} " +
+            "-L${getTargetLibDir(abi, buildType)} -L${getOpenSSLLibDir(abi)} -lcrypto"
+    if (OperatingSystem.current().isWindows())
+        ldflags = ldflags.replaceAll('/', '\\\\') + '.exe'
+    return ldflags
+}
+
+def getLDSHARED(abi, buildType) {
+    def api_level = 21
+    def ldshared = "${getCC(abi)} -DANDROID -mandroid -fomit-frame-pointer " +
+            "--sysroot ${getCrystaxNdkDir()}/platforms/android-${api_level}/arch-${getPlatformName(abi)} " +
+            "-L${getPythonLibDir(abi)} -L${getLibCrystaxDir(abi)} -L${getOpenSSLLibDir(abi)} -L${getTargetLibDir(abi, buildType)} " +
+            "-lm -lcrystax -lcrypto -lpython3.5m -shared"
+    return ldshared
+}
+
+def getPrebuiltLibPaths(abi) {
+    def paths = []
+    paths += getPythonLibDir(abi)
+    paths += getLibCrystaxDir(abi)
+    return paths
+}
+
+def getTargetLibDir(abi, buildType) {
+    return "${buildDir}/intermediates/binaries/${buildType}/${getFlavorName(abi)}/lib/${abi}"
+}
+
+def getTargetAssetsDir(abi, buildType) {
+    return "${buildDir}/intermediates/assets/${getFlavorName(abi)}/${buildType}"
+}
+
+def getOutputAssetsDir(abi, buildType) {
+    return "${buildDir}/outputs/assets"
+}
+
+def getLibCrystaxDir(abi) {
+    return "${getCrystaxNdkDir()}/sources/crystax/libs/${abi}"
+}
+
+def getLibCrystax(abi) {
+    return "${getLibCrystaxDir(abi)}/libcrystax.so"
+}
+
+def getOpenSSLDir() {
+    return "${getCrystaxNdkDir()}/sources/openssl/1.0.2j"
+}
+
+def getOpenSSLIncDir() {
+    return "${getOpenSSLDir()}/include"
+}
+
+def getOpenSSLLibDir(abi) {
+    return "${getOpenSSLDir()}/libs/${abi}"
+}
+
+def getPythonDir() {
+    return "${getCrystaxNdkDir()}/sources/python/3.5"
+}
+
+def getPythonIncDir() {
+    return "${getPythonDir()}/include"
+}
+
+def getPythonLibDir(abi) {
+    return "${getPythonDir()}/libs/${abi}"
+}

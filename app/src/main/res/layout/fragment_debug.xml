@@ -1,0 +1,79 @@
+<!--
+     * fragment_debug.xml : Debug Fragment layout
+     *
+     * This file is part of EPControl.
+     *
+     * Copyright (C) 2016  Jean-Baptiste Galet & Timothe Aeberhardt
+     *
+     * EPControl is free software: you can redistribute it and/or modify
+     * it under the terms of the GNU General Public License as published by
+     * the Free Software Foundation, either version 3 of the License, or
+     * (at your option) any later version.
+     *
+     * EPControl is distributed in the hope that it will be useful,
+     * but WITHOUT ANY WARRANTY; without even the implied warranty of
+     * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     * GNU General Public License for more details.
+     *
+     * You should have received a copy of the GNU General Public License
+     * along with EPControl.  If not, see <http://www.gnu.org/licenses/>.
+    */
+-->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/debugLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="io.pokesec.epcontrol.DebugFragment">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="@string/title_debug"
+        android:id="@+id/textView"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignBottom="@+id/refreshLogsButton"
+        android:layout_alignParentBottom="false"
+        android:gravity="center_vertical" />
+
+    <ScrollView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/scrollView"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_below="@+id/textView"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/logTextView"
+            android:textIsSelectable="false"
+            android:text="@string/msg_refreshinglogs"
+            android:textSize="12sp" />
+    </ScrollView>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_refreshlogs"
+        android:id="@+id/refreshLogsButton"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_refreshtasks"
+        android:id="@+id/refreshTasksButton"
+        android:layout_above="@+id/scrollView"
+        android:layout_toLeftOf="@+id/refreshLogsButton"
+        android:layout_toStartOf="@+id/refreshLogsButton" />
+</RelativeLayout>

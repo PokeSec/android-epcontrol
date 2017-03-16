@@ -1,0 +1,24 @@
+diff -ur crystax-ndk-10.3.2/build/tools/build-target-python.sh crystax-ndk-10.3.2-orig/build/tools/build-target-python.sh
+--- crystax-ndk-10.3.2/build/tools/build-target-python.sh	2016-09-07 13:11:11.156546771 +0200
++++ crystax-ndk-10.3.2-orig/build/tools/build-target-python.sh	2015-12-24 07:42:26.000000000 +0100
+@@ -378,7 +378,7 @@
+         if [ "$PYTHON_MAJOR_VERSION" = "2" ]; then
+             echo "LOCAL_CFLAGS := -DPy_BUILD_CORE -DPy_ENABLE_SHARED -DPLATFORM=\\\"linux\\\""
+         else
+-            echo "LOCAL_CFLAGS := -DSOABI=\\\"$PYTHON_SOABI\\\" -DPy_BUILD_CORE -DPy_ENABLE_SHARED -DPLATFORM=\\\"linux\\\""
++            echo "LOCAL_CFLAGS := -DSOABI=\\\"$PYTHON_SOABI\\\" -DPy_BUILD_CORE -DPy_ENABLE_SHARED -DPLATFORM=\\\"linux\\\" -DVERSION=\\\"$PYTHON_ABI\\\" -DVPATH=\\\"$PYTHON_SRCDIR\\\" -DPREFIX=\\\"/usr/local\\\" -DEXEC_PREFIX=\\\"/usr/local\\\" -DPYTHONPATH=\\\"/usr/local/lib/python$PYTHON_ABI:/usr/local/lib/python$PYTHON_ABI/lib-dynload\\\""
+         fi
+         echo 'LOCAL_LDLIBS := -lz'
+         cat $PY_ANDROID_MK_TEMPLATE_FILE
+diff -ur crystax-ndk-10.3.2/build/tools/dev-defaults.sh crystax-ndk-10.3.2-orig/build/tools/dev-defaults.sh
+--- crystax-ndk-10.3.2/build/tools/dev-defaults.sh	2016-09-07 14:42:02.587676297 +0200
++++ crystax-ndk-10.3.2-orig/build/tools/dev-defaults.sh	2015-12-24 07:42:26.000000000 +0100
+@@ -65,7 +65,7 @@
+ 
+ # Location of the OpenSSL libraries, relative to the NDK root directory
+ OPENSSL_SUBDIR=sources/openssl
+-OPENSSL_VERSIONS="1.0.1p"
++OPENSSL_VERSIONS="1.0.2j"
+ DEFAULT_OPENSSL_VERSION=$(echo $OPENSSL_VERSIONS | tr ' ' '\n' | head -n 1)
+ 
+ # Location of the libpng libraries, relative to the NDK root directory

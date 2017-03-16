@@ -1,0 +1,13 @@
+diff --git a/src/watchdog/observers/inotify_c.py b/src/watchdog/observers/inotify_c.py
+index ec795cd..c4525ee 100644
+--- a/src/watchdog/observers/inotify_c.py
++++ b/src/watchdog/observers/inotify_c.py
+@@ -382,7 +382,7 @@ class Inotify(object):
+         """
+         wd = inotify_add_watch(self._inotify_fd, path, mask)
+         if wd == -1:
+-            Inotify._raise_error()
++            return
+         self._wd_for_path[path] = wd
+         self._path_for_wd[wd] = path
+         return wd

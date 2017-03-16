@@ -1,0 +1,15 @@
+*.iml
+*.swp
+.gradle
+/local.properties
+/.idea
+/.private
+.DS_Store
+/build
+/captures
+/app/python-deps/native-modules/*/build
+/app/python-deps/native-modules/**/*.so
+/app/python-deps/native-modules/.*.patched
+/app/python-deps/agentlib
+/app/src/main/python/*
+/app/src/main/settings.json

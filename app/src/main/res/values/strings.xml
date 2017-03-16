@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">EPControl</string>
+    <string name="title_activity_overlay">Threat detected overlay</string>
+    <string name="action_home">Home</string>
+    <string name="action_debug">Debug information</string>
+    <string name="action_about">About</string>
+    <string name="title_debug">Debug</string>
+    <string name="title_about">About</string>
+    <string name="productName">EPControl for Android</string>
+    <string name="productCopyright" translatable="false">Copyright © 2016 - Pokesec</string>
+
+    <string name="msg_refreshinglogs">Refreshing logs....</string>
+    <string name="msg_nologs">No logs are available.</string>
+    <string name="msg_error_reading_log">Error reading logfile.</string>
+    <string name="msg_thread_detected">THREAT DETECTED</string>
+
+
+    <string name="btn_refreshtasks">Refresh tasks</string>
+    <string name="btn_refreshlogs">Refresh logs</string>
+    <string name="btn_dismiss">Dismiss</string>
+
+    <string name="img_logo">Logo</string>
+
+    <string name="default_web_client_id" translatable="false">134306964162-cies0f23qkabaioihk2nles3cho7cfac.apps.googleusercontent.com</string>
+    <string name="gcm_defaultSenderId" translatable="false">134306964162</string>
+    <string name="firebase_database_url" translatable="false">https://epcontrol-cf905.firebaseio.com</string>
+    <string name="google_api_key" translatable="false">AIzaSyAtIh9-tjY2iMglFtz_nPXfog8jzXXj0jc</string>
+    <string name="google_storage_bucket" translatable="false">epcontrol-cf905.appspot.com</string>
+
+</resources>

@@ -1,0 +1,59 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorPrimary"
+    tools:context="io.pokesec.epcontrol.OverlayActivity">
+
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/imageView"
+            android:src="@drawable/ic_launcher"
+            android:layout_weight="0.2"
+            android:layout_marginTop="40sp" />
+
+        <TextView
+            android:id="@+id/threatDetectedView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:gravity="center"
+            android:keepScreenOn="true"
+            android:text="@string/msg_thread_detected"
+            android:textColor="@color/colorAccent"
+            android:textSize="30sp"
+            android:layout_weight="0.6"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/threatDetectedInfoView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:gravity="center"
+            android:keepScreenOn="true"
+            android:textColor="@android:color/primary_text_dark"
+            android:layout_weight="1"
+            android:textIsSelectable="false"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_dismiss"
+            style="?metaButtonBarButtonStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/btn_dismiss"
+            android:layout_gravity="bottom|center_horizontal"
+            android:background="@color/black_overlay"
+            android:enabled="true"
+            android:textColor="@color/colorAccent" />
+
+    </LinearLayout>
+
+</FrameLayout>

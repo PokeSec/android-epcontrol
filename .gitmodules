@@ -1,0 +1,6 @@
+[submodule "app/python-deps/native-modules/watchdog"]
+	path = app/python-deps/native-modules/watchdog
+	url = https://github.com/gorakhargosh/watchdog.git
+[submodule "app/python-deps/native-modules/psutil"]
+	path = app/python-deps/native-modules/psutil
+	url = https://github.com/giampaolo/psutil.git
